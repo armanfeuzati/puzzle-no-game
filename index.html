@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Hidden Pattern - Publisher Demo</title>
+
+<style>
+
+body{
+  font-family:Arial;
+  background:#0f172a;
+  color:white;
+  text-align:center;
+  margin:0;
+}
+
+#startScreen{
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background:#020617;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  z-index:10;
+}
+
+#startScreen h1{
+  font-size:42px;
+  margin-bottom:10px;
+  color:#38bdf8;
+}
+
+#startScreen p{
+  max-width:540px;
+  color:#cbd5f5;
+  line-height:1.6;
+  font-size:16px;
+}
+
+#startBtn{
+  margin-top:20px;
+  padding:14px 32px;
+  font-size:18px;
+  background:#38bdf8;
+  color:#020617;
+  border:none;
+  border-radius:10px;
+  cursor:pointer;
+  font-weight:bold;
+}
+
+#game{
+  display:none;
+  padding:20px;
+}
+
+h2{
+  color:#38bdf8;
+  margin-bottom:10px;
+}
+
+#hud{
+  margin-bottom:10px;
+  font-size:16px;
+}
+
+#patternInfo{
+  margin-top:8px;
+  color:#cbd5f5;
+  font-size:15px;
+}
+
+#gridWrapper{
+  position:relative;
+  width:max-content;
+  margin:20px auto 0 auto;
+}
+
+#grid{
+  display:grid;
+  grid-template-columns:repeat(6,70px);
+  gap:10px;
+  margin-top:20px;
+}
+
+#lineCanvas{
+  position:absolute;
+  top:20px;
+  left:0;
+  pointer-events:none;
+  z-index:2;
+}
+
+.cell{
+  width:70px;
+  height:70px;
+  background:#e2e8f0;
+  color:black;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:22px;
+  font-weight:bold;
+  border-radius:12px;
+  cursor:pointer;
+  user-select:none;
+  transition:0.15s;
+  position:relative;
+  z-index:1;
+}
+
+.cell:hover{
+  transform:scale(1.04);
+  background:#bae6fd;
+}
+
+.cell.selected{
+  background:#38bdf8;
+  color:white;
+}
+
+.cell.correct{
+  background:#22c55e;
+  color:white;
+}
+
+.cell.wrong{
+  background:#ef4444;
+  color:white;
+}
+
+.cell.hint{
+  background:#f59e0b;
+  color:white;
+}
+
+button{
+  padding:10px 16px;
+  margin:5px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  font-weight:bold;
+  background:#e2e8f0;
+  color:#020617;
+}
+
+button:hover{
+  background:#38bdf8;
+}
+
+#publisherPanel{
+  margin-top:25px;
+  padding:16px;
+  background:#1e293b;
+  border:1px solid #334155;
+  border-radius:12px;
+  display:inline-block;
+}
+
+#publisherPanel h3{
+  margin-top:0;
+  margin-bottom:12px;
+  color:#38bdf8;
+}
+
+#publisherPanel input{
+  padding:8px;
+  border-radius:6px;
+  border:none;
+  width:70px;
+  text-align:center;
+  font-weight:bold;
+}
+
+#levelGuide{
+  margin:25px auto 0 auto;
+  max-width:520px;
+  font-size:14px;
+  color:#cbd5f5;
+  line-height:1.7;
+  background:#111827;
+  padding:15px;
+  border-radius:12px;
+  border:1px solid #334155;
+}
+
+</style>
+</head>
+
+<body>
+
+<div id="startScreen">
+
+  <h1>Hidden Pattern</h1>
+
+  <p>
+    Find the hidden numeric pattern inside the grid.<br>
+    Select four numbers that follow the correct rule in a straight line (horizontally, vertically, or diagonally).<br>
+    Patterns change as levels increase.
+  </p>
+
+  <button id="startBtn" onclick="startGame()">Start Demo</button>
+
+</div>
+
+
+<div id="game">
+
+  <h2>Hidden Pattern</h2>
+
+  <div id="hud">
+    Score: <span id="score">0</span> |
+    Level: <span id="level">1</span> |
+    Coins: <span id="coins">5</span>
+  </div>
+
+  <div id="patternInfo"></div>
+
+  <div id="gridWrapper">
+    <canvas id="lineCanvas"></canvas>
+    <div id="grid"></div>
+  </div>
+
+  <div style="margin-top:20px">
+    <button onclick="clearSelection()">Clear</button>
+    <button onclick="hint()">Hint (-1)</button>
+    <button onclick="reveal()">Reveal (-3)</button>
+    <button onclick="newGame()">Restart</button>
+  </div>
+
+  <div id="publisherPanel">
+
+    <h3>Publisher Test Panel</h3>
+
+    Level
+    <input id="testLevel" type="number" value="1" min="1">
+    <button onclick="jumpLevel()">Go</button>
+
+    <br><br>
+
+    <button onclick="addTestCoins()">+10 Coins</button>
+    <button onclick="resetLevel()">Restart Level</button>
+
+  </div>
+
+  <div id="levelGuide">
+
+    <b>Pattern Guide</b><br><br>
+
+    Level 1‑3 : Arithmetic Sequence<br>
+    Level 4‑7 : Even / Odd Numbers<br>
+    Level 8‑12 : Geometric ×2<br>
+    Level 13‑20 : Square / Fibonacci<br>
+    Level 21‑30 : Multiples<br>
+    Level 31‑40 : Power of 2<br>
+    Level 41+ : Triangular Numbers
+
+  </div>
+
+</div>
+
+
+<script>
+
+function startGame(){
+  document.getElementById("startScreen").style.display="none"
+  document.getElementById("game").style.display="block"
+  createGrid()
+}
+
+const SIZE=6
+const TOTAL=36
+
+let grid=[]
+let selected=[]
+let patternPositions=[]
+let patternNumbers=[]
+let patternType=""
+let patternRule=""
+
+let score=0
+let level=1
+let coins=5
+
+const gridEl=document.getElementById("grid")
+const canvas=document.getElementById("lineCanvas")
+const ctx=canvas.getContext("2d")
+
+const scoreEl=document.getElementById("score")
+const levelEl=document.getElementById("level")
+const coinsEl=document.getElementById("coins")
+const patternInfo=document.getElementById("patternInfo")
+
+function rand(a,b){
+  return Math.floor(Math.random()*(b-a+1))+a
+}
+
+function choose(a){
+  return a[Math.floor(Math.random()*a.length)]
+}
+
+function updateHUD(){
+  scoreEl.innerText=score
+  levelEl.innerText=level
+  coinsEl.innerText=coins
+}
+
+function updatePatternInfo(){
+  patternInfo.innerText="Pattern: "+patternType+" ("+patternRule+")"
+}
+
+function generateLine(){
+
+  let dirs=["H","V","D1","D2"]
+  let d=choose(dirs)
+
+  let p=[]
+
+  if(d=="H"){
+    let r=rand(0,5)
+    let c=rand(0,2)
+    for(let i=0;i<4;i++) p.push(r*6+c+i)
+  }
+
+  if(d=="V"){
+    let r=rand(0,2)
+    let c=rand(0,5)
+    for(let i=0;i<4;i++) p.push((r+i)*6+c)
+  }
+
+  if(d=="D1"){
+    let r=rand(0,2)
+    let c=rand(0,2)
+    for(let i=0;i<4;i++) p.push((r+i)*6+(c+i))
+  }
+
+  if(d=="D2"){
+    let r=rand(3,5)
+    let c=rand(0,2)
+    for(let i=0;i<4;i++) p.push((r-i)*6+(c+i))
+  }
+
+  return p
+}
+
+
+function generatePattern(){
+
+  let types=[]
+
+  if(level<=3) types=["Arithmetic"]
+  else if(level<=7) types=["Even","Odd"]
+  else if(level<=12) types=["Geometric"]
+  else if(level<=20) types=["Square","Fibonacci"]
+  else if(level<=30) types=["Multiple"]
+  else if(level<=40) types=["Power2"]
+  else types=["Triangular"]
+
+  let t=choose(types)
+  patternType=t
+
+
+  if(t=="Arithmetic"){
+
+    let s=rand(1,6)
+    let maxStart=99-s*3
+    let a=rand(1,maxStart)
+
+    patternRule="+"+s
+    return[a,a+s,a+s*2,a+s*3]
+
+  }
+
+
+  if(t=="Even"){
+
+    let maxStart=99-6
+    let a=rand(2,maxStart)
+
+    if(a%2!==0) a++
+
+    patternRule="Even"
+    return[a,a+2,a+4,a+6]
+
+  }
+
+
+  if(t=="Odd"){
+
+    let maxStart=99-6
+    let a=rand(1,maxStart)
+
+    if(a%2===0) a++
+
+    patternRule="Odd"
+    return[a,a+2,a+4,a+6]
+
+  }
+
+
+  if(t=="Geometric"){
+
+    let maxStart=Math.floor(99/8)
+    let a=rand(1,maxStart)
+
+    patternRule="×2"
+    return[a,a*2,a*4,a*8]
+
+  }
+
+
+  if(t=="Square"){
+
+    let maxN=Math.floor(Math.sqrt(99))
+    let n=rand(1,maxN-3)
+
+    patternRule="n²"
+
+    return[
+      n*n,
+      (n+1)*(n+1),
+      (n+2)*(n+2),
+      (n+3)*(n+3)
+    ]
+
+  }
+
+
+  if(t=="Fibonacci"){
+
+    let fib=[1,1,2,3,5,8,13,21,34,55,89]
+    let s=rand(0,fib.length-4)
+
+    patternRule="Fibonacci"
+    return[fib[s],fib[s+1],fib[s+2],fib[s+3]]
+
+  }
+
+
+  if(t=="Multiple"){
+
+    let base=rand(2,20)
+    let maxStart=Math.floor(99/(base*4))
+
+    if(maxStart<1) maxStart=1
+
+    let start=rand(1,maxStart)
+
+    patternRule="×"+base
+
+    return[
+      start*base,
+      start*base*2,
+      start*base*3,
+      start*base*4
+    ]
+
+  }
+
+
+  if(t=="Power2"){
+
+    let p=[1,2,4,8,16,32,64]
+    let s=rand(0,p.length-4)
+
+    patternRule="2ⁿ"
+    return[p[s],p[s+1],p[s+2],p[s+3]]
+
+  }
+
+
+  if(t=="Triangular"){
+
+    let tri=[1,3,6,10,15,21,28,36,45,55,66,78]
+    let s=rand(0,tri.length-4)
+
+    patternRule="Triangular"
+    return[tri[s],tri[s+1],tri[s+2],tri[s+3]]
+
+  }
+
+}
+
+
+function patternMatch(arr){
+
+  if(patternType=="Arithmetic"){
+    let d=arr[1]-arr[0]
+    return arr[2]-arr[1]==d && arr[3]-arr[2]==d
+  }
+
+  if(patternType=="Even"){
+    return arr.every(n=>n%2==0)
+  }
+
+  if(patternType=="Odd"){
+    return arr.every(n=>n%2==1)
+  }
+
+  if(patternType=="Geometric"){
+    return arr[1]/arr[0]==2 && arr[2]/arr[1]==2 && arr[3]/arr[2]==2
+  }
+
+  if(patternType=="Square"){
+
+    let squares=[]
+
+    for(let n=1;n*n<=99;n++){
+      squares.push(n*n)
+    }
+
+    for(let i=0;i<squares.length-3;i++){
+      if(
+        arr[0]==squares[i] &&
+        arr[1]==squares[i+1] &&
+        arr[2]==squares[i+2] &&
+        arr[3]==squares[i+3]
+      ){
+        return true
+      }
+    }
+
+    return false
+
+  }
+
+  if(patternType=="Fibonacci"){
+    return arr[2]==arr[0]+arr[1] && arr[3]==arr[1]+arr[2]
+  }
+
+  if(patternType=="Multiple"){
+    let k=arr[0]
+    return arr[1]==k*2 && arr[2]==k*3 && arr[3]==k*4
+  }
+
+  if(patternType=="Power2"){
+    return arr[1]==arr[0]*2 && arr[2]==arr[1]*2 && arr[3]==arr[2]*2
+  }
+
+  if(patternType=="Triangular"){
+
+    let tri=[1,3,6,10,15,21,28,36,45,55,66,78]
+
+    for(let i=0;i<tri.length-3;i++){
+      if(
+        arr[0]==tri[i] &&
+        arr[1]==tri[i+1] &&
+        arr[2]==tri[i+2] &&
+        arr[3]==tri[i+3]
+      ){
+        return true
+      }
+    }
+
+    return false
+
+  }
+
+  return false
+
+}
+
+
+function createGrid(){
+
+  ctx.clearRect(0,0,canvas.width,canvas.height)
+
+  do{
+
+    grid=[]
+
+    for(let i=0;i<TOTAL;i++){
+      grid.push(rand(1,99))
+    }
+
+    patternNumbers=generatePattern()
+    patternPositions=generateLine()
+
+    patternPositions.forEach((p,i)=>{
+      grid[p]=patternNumbers[i]
+    })
+
+  }while(!checkUnique())
+
+  selected=[]
+
+  renderGrid()
+  updateHUD()
+  updatePatternInfo()
+
+}
+
+
+function checkUnique(){
+
+  let dirs=[
+    [1,0],
+    [0,1],
+    [1,1],
+    [-1,1]
+  ]
+
+  for(let r=0;r<6;r++){
+
+    for(let c=0;c<6;c++){
+
+      for(let d of dirs){
+
+        let arr=[]
+        let pos=[]
+
+        for(let i=0;i<4;i++){
+
+          let rr=r+d[0]*i
+          let cc=c+d[1]*i
+
+          if(rr<0||rr>=6||cc<0||cc>=6) break
+
+          arr.push(grid[rr*6+cc])
+          pos.push(rr*6+cc)
+
+        }
+
+        if(arr.length==4){
+
+          if(patternMatch(arr)){
+
+            let same=pos.every(p=>patternPositions.includes(p))
+
+            if(!same){
+              return false
+            }
+
+          }
+
+        }
+
+      }
+
+    }
+
+  }
+
+  return true
+
+}
+
+
+function renderGrid(){
+
+  gridEl.innerHTML=""
+
+  for(let i=0;i<TOTAL;i++){
+
+    let c=document.createElement("div")
+
+    c.className="cell"
+    c.innerText=grid[i]
+
+    c.onclick=()=>selectCell(i,c)
+
+    gridEl.appendChild(c)
+
+  }
+
+  setCanvas()
+
+}
+
+
+function setCanvas(){
+
+  let rect=gridEl.getBoundingClientRect()
+
+  canvas.width=rect.width
+  canvas.height=rect.height
+
+}
+
+
+function selectCell(i,el){
+
+  if(selected.length>=4) return
+
+  selected.push({i,el})
+  el.classList.add("selected")
+
+  if(selected.length==4){
+    setTimeout(checkAnswer,200)
+  }
+
+}
+
+
+function checkAnswer(){
+
+  let chosen=selected.map(s=>s.i)
+
+  let ok=patternPositions.every(p=>chosen.includes(p))
+
+  if(ok){
+
+    selected.forEach(s=>{
+      s.el.classList.remove("selected")
+      s.el.classList.add("correct")
+    })
+
+    drawLine()
+
+    score+=100
+    coins++
+    level++
+
+    updateHUD()
+
+    setTimeout(createGrid,1200)
+
+  }else{
+
+    selected.forEach(s=>{
+      s.el.classList.add("wrong")
+    })
+
+    setTimeout(()=>{
+
+      selected.forEach(s=>{
+        s.el.classList.remove("wrong","selected")
+      })
+
+      selected=[]
+
+    },700)
+
+  }
+
+}
+
+
+function drawLine(){
+
+  ctx.clearRect(0,0,canvas.width,canvas.height)
+
+  ctx.strokeStyle="#38bdf8"
+  ctx.lineWidth=6
+  ctx.shadowBlur=18
+  ctx.shadowColor="#38bdf8"
+
+  ctx.beginPath()
+
+  patternPositions.forEach((p,i)=>{
+
+    let cell=gridEl.children[p]
+
+    let r=cell.getBoundingClientRect()
+    let g=gridEl.getBoundingClientRect()
+
+    let x=r.left-g.left+r.width/2
+    let y=r.top-g.top+r.height/2
+
+    if(i==0){
+      ctx.moveTo(x,y)
+    }else{
+      ctx.lineTo(x,y)
+    }
+
+  })
+
+  ctx.stroke()
+
+}
+
+
+function clearSelection(){
+
+  selected.forEach(s=>{
+    s.el.classList.remove("selected")
+  })
+
+  selected=[]
+
+}
+
+
+function hint(){
+
+  if(coins<1) return
+
+  coins--
+
+  let p=choose(patternPositions)
+
+  gridEl.children[p].classList.add("hint")
+
+  setTimeout(()=>{
+    gridEl.children[p].classList.remove("hint")
+  },700)
+
+  updateHUD()
+
+}
+
+
+function reveal(){
+
+  if(coins<3) return
+
+  coins-=3
+
+  patternPositions.forEach(p=>{
+    gridEl.children[p].classList.add("correct")
+  })
+
+  drawLine()
+  updateHUD()
+
+}
+
+
+function newGame(){
+
+  score=0
+  level=1
+  coins=5
+
+  createGrid()
+
+}
+
+
+function jumpLevel(){
+
+  let v=parseInt(document.getElementById("testLevel").value)
+
+  if(!isNaN(v) && v>=1){
+
+    level=v
+    createGrid()
+
+  }
+
+}
+
+
+function addTestCoins(){
+
+  coins+=10
+  updateHUD()
+
+}
+
+
+function resetLevel(){
+
+  createGrid()
+
+}
+
+
+window.addEventListener("resize",function(){
+
+  setCanvas()
+
+})
+
+</script>
+
+</body>
+</html>
